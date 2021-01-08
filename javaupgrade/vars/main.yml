@@ -1,0 +1,4 @@
+---
+# vars file for ansible-java-keystore
+java_keystore_certificate_directory: /etc/pki/java
+

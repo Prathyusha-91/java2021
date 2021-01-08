@@ -1,0 +1,154 @@
+--- 
+- 
+  become: true
+  get_url: 
+    dest: "{{ oracle_java_dir_source }}/{{ oracle_java_rpm_filename }}"
+    force: false
+    headers: 
+      Cookie: "gpw_e24=http%3A%2F%2Fwww.oracle.com%2F; oraclelicense=accept-securebackup-cookie"
+    timeout: "{{ oracle_java_download_timeout }}"
+    url: "{{ oracle_java_rpm_url }}"
+    validate_certs: "{{ oracle_java_rpm_validate_certs }}"
+  name: "download Java RPM"
+  register: oracle_java_task_rpm_download
+  until: "oracle_java_task_rpm_download is succeeded"
+  when: "oracle_java_version_installed is not defined or oracle_java_version_installed != oracle_java_version_string"
+- 
+#  name: install RPM
+#  yum:
+#    name: /usr/local/src/jdk-15.0.1_linux-x64_bin.rpm
+#    state: present
+#  when: oracle_java_task_rpm_download is changed
+#  retries: 5
+#  register: rpminstall
+#  until: rpminstall.rc == 0
+#  become: true
+
+-
+  name: install RPM package
+  shell: rpm -ivh --replacepkgs /usr/local/src/jdk-15.0.1_linux-x64_bin.rpm
+  when: oracle_java_task_rpm_download is succeeded
+
+- 
+  alternatives: "name=\"{{ java.exe }}\" link=\"/usr/bin/{{ java.exe }}\" path=\"{{ java.path }}/{{ java.exe }}\""
+  become: true
+  loop_control: 
+    loop_var: java
+  name: "set Java version as default"
+  register: oracle_java_task_set_default
+#  when: "( oracle_java_set_as_default and oracle_java_task_rpm_download is defined and oracle_java_task_rpm_download is changed ) or ( oracle_java_set_as_default and oracle_java_installed is defined and oracle_java_installed and oracle_java_version_installed is defined and oracle_java_version_installed != oracle_java_version_string)"
+  with_items: 
+    - 
+      exe: java
+      path: "{{ oracle_java_home }}/bin"
+    - 
+      exe: keytool
+      path: "{{ oracle_java_home }}/bin"
+    - 
+      exe: javac
+      path: "{{ oracle_java_home }}/bin"
+    - 
+      exe: javadoc
+      path: "{{ oracle_java_home }}/bin"
+- 
+  aws_s3_bucket_facts: 
+    aws_access_key: "AKIAIBERZFSPLMCH2AKQ"
+    aws_secret_key: "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"
+  name: "List S3 Buckets"
+  register: s3_bucket
+- 
+  become: true
+  name: "Get s3 objects"
+  register: s3_object_list
+  amazon.aws.aws_s3: 
+    bucket: "oraclejavas3"
+    mode: list
+    prefix: "oraclejavas3 directory-path"
+#  when: oracle_java_version_installed == false
+ 
+- name: "Create download directory"
+  file: 
+    path: "/yum/local/javaupgrade/{{ item | dirname }}"
+    state: directory
+  with_items: 
+    - "{{ s3_object_list.s3_keys }}"
+
+
+
+#- name: "copy the files"
+#  copy:
+#   src: "{{ filePath }}"
+#   dest: "/temp/"
+# become: yes
+# remote_src: true
+# loop_control:
+#   loop_var: filePath
+# with_items:
+#         - "/temp/apple_corporate_root_ca2.pem"
+#         - "/temp/apple_corporate_root_ca.pem"
+#         - "/temp/ca-trust-check-1.0.0.jar"
+            
+- name: Import SSL certificate to a given cacerts keystore
+  java_cert:
+         cert_path: "/tmp/apple_corporate_root_ca.pem"
+         cert_alias: Apple_Corporate_Root_CA
+         cert_port: 443
+         keystore_path: "/tmp/jre/lib/security/cacerts"
+         keystore_pass: change-it
+         executable: "/tmp/bin/"
+         state: present
+         
+- name: Import SSL certificate to a cacerts keystore
+  java_cert:
+         cert_path: "/tmp/apple_corporate_root_ca2.pem"
+         cert_alias: Apple_Corporate_Root_CA2
+         cert_port: 443
+         keystore_path: "/tmp/jre/lib/security/cacerts"
+         keystore_pass: kumar1434
+         executable: "/tmp/bin/keytool"
+         state: present    
+    
+
+#- name: Terminate Instances
+#  ec2_instance_facts:
+#              region: us-east-2
+#  register: ec2_info
+ 
+#- name: displaying output
+#  debug: msg="{{item.instance_id}}"
+#  with_items: "{{ec2_info.instances}}"
+ 
+#- name: terminate 
+#      ec2:
+#        instance_ids: "{{item.instance_id}}"
+#        region: us-east-2
+#        state: absent
+#        wait: yes
+#      with_items: "{{ec2_info.instances}}"
+
+- name: Compress directory /opt/java/foo/ into /path/to/foo.tgz
+  archive:
+    path: /opt/java/foo
+    dest: /opt/java/foo.tgz
+    
+
+- name: Delete content of old jdk
+  ignore_errors: yes
+  file:
+      state: absent
+      path: /opt/java/foo/
+ 
+- name: Ansible replace new jdk
+  ignore_errors: yes
+  file:
+     path: "/opt/java/foo/"
+     state: touch    
+        
+
+- name: Verify jdk version again
+  command: "java --version"
+  register: java_result
+  when: "result_a.stat.exists"
+  changed_when: False
+  failed_when: False
+          

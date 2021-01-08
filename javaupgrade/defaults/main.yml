@@ -1,0 +1,18 @@
+---
+# file: oracle-java/defaults/main.yml
+#
+# defaults file
+#
+
+oracle_java_set_as_default: yes
+oracle_java_use_defaults: yes
+
+
+# defaults file for ansible-java-keystore
+java_keystore_jre_path: ""
+java_keystore_file_path: ""
+java_keystore_file_password: ""
+java_keystore_certificates: []
+#- alias: 'xyz.example.org'
+#  certificate_file: ""
+

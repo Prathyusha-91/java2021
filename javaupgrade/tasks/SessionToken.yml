@@ -1,0 +1,12 @@
+sts_session_token:
+  duration_seconds: 3600
+register: session_credentials
+# Use the session token obtained above to tag an instance in account 123456789012
+ec2_tag:
+  aws_access_key: "{{ AKIAIBERZFSPLMCH2AKQ }}"
+  aws_secret_key: "{{ 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 }}"
+  security_token: "{{ session_credentials.sts_creds.session_token }}"
+  resource: i-065147a84dc2a7747
+  state: present
+  tags:
+    MyNewTag: rhel-instance-java
